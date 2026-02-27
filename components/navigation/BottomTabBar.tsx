@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -7,15 +8,25 @@ import { colors, radii, fonts } from '@/constants/theme';
 type FeatherIcon = React.ComponentProps<typeof Feather>['name'];
 
 const TAB_CONFIG: Record<string, { label: string; icon: FeatherIcon; primary?: boolean }> = {
+  index: { label: 'Home', icon: 'home' },
   friends: { label: 'Friends', icon: 'user-plus' },
   inventory: { label: 'Inv', icon: 'grid' },
-  index: { label: 'BATTLE', icon: 'star', primary: true },
+  battle: { label: 'BATTLE', icon: 'star', primary: true },
   rank: { label: 'Rank', icon: 'bar-chart-2' },
   shop: { label: 'Shop', icon: 'shopping-bag' },
 };
 
-export default function BottomTabBar({ state, navigation }: BottomTabBarProps) {
+interface Props extends BottomTabBarProps {
+  onRouteChange?: (name: string) => void;
+}
+
+export default function BottomTabBar({ state, navigation, onRouteChange }: Props) {
   const insets = useSafeAreaInsets();
+  const currentRouteName = state.routes[state.index]?.name ?? '';
+
+  useEffect(() => {
+    onRouteChange?.(currentRouteName);
+  }, [currentRouteName, onRouteChange]);
 
   return (
     <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -50,7 +61,7 @@ export default function BottomTabBar({ state, navigation }: BottomTabBarProps) {
             >
               <Feather
                 name={config.icon}
-                size={isPrimary ? 28 : 24}
+                size={isPrimary ? 26 : 22}
                 color={isPrimary ? '#000' : isFocused ? colors.textPrimary : colors.textSecondary}
               />
               <Text
@@ -77,18 +88,18 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
   },
   nav: {
-    backgroundColor: 'rgba(20, 20, 20, 0.92)',
+    backgroundColor: 'rgba(20, 20, 20, 0.95)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: radii.pill,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
     width: '100%',
     maxWidth: 420,
     shadowColor: '#000',
@@ -101,12 +112,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    height: 56,
+    gap: 3,
+    height: 52,
     borderRadius: 24,
   },
   navItemPrimary: {
-    flex: 1.3,
+    flex: 1.2,
     backgroundColor: colors.accentPrimary,
     shadowColor: colors.accentPrimary,
     shadowOffset: { width: 0, height: 0 },
@@ -115,13 +126,14 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   navLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: fonts.semiBold,
     color: colors.textSecondary,
   },
   navLabelPrimary: {
     color: '#000',
     fontFamily: fonts.extraBold,
+    fontSize: 9,
   },
   navLabelActive: {
     color: colors.textPrimary,

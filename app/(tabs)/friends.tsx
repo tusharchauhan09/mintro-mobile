@@ -1,12 +1,9 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts } from '@/constants/theme';
 
 export default function FriendsScreen() {
-  const insets = useSafeAreaInsets();
-
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 24 }]}>
+    <View style={styles.screen}>
       <Text style={styles.title}>Friends</Text>
       <Text style={styles.subtitle}>Coming soon</Text>
     </View>

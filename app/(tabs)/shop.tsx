@@ -1,12 +1,9 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts } from '@/constants/theme';
 
 export default function ShopScreen() {
-  const insets = useSafeAreaInsets();
-
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 24 }]}>
+    <View style={styles.screen}>
       <Text style={styles.title}>Shop</Text>
       <Text style={styles.subtitle}>Coming soon</Text>
     </View>
@@ -27,7 +24,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 24,
+    fontSize: 14,
     fontFamily: fonts.regular,
     color: colors.textSecondary,
   },

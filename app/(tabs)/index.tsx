@@ -1,5 +1,4 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
-import Header from '@/components/home/Header';
 import HeroCard from '@/components/home/HeroCard';
 import StatsGrid from '@/components/home/StatsGrid';
 import RosterSection from '@/components/home/RosterSection';
@@ -8,7 +7,6 @@ import { colors, spacing } from '@/constants/theme';
 export default function HomeScreen() {
   return (
     <View style={styles.screen}>
-      <Header />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
