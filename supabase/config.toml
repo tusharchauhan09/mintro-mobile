@@ -1,0 +1,20 @@
+[project]
+id = "" # Fill in after `supabase init` or link
+
+[api]
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+site_url = "https://cybercard.arena"
+jwt_expiry = 604800 # 7 days
+
+[auth.external]
+# Wallet auth is custom — no OAuth providers needed.
+
+[storage]
+# Storage not used in Phase 1 — card images are local assets.

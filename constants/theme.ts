@@ -17,6 +17,7 @@ export const colors = {
 
   navBarBg: 'rgba(20, 20, 20, 0.95)',
   navBarBorder: 'rgba(255, 255, 255, 0.1)',
+  navTabActive: 'rgba(255, 255, 255, 0.08)',
   shadow: '#000000',
 
   gradientCardA: ['#333333', '#111111'] as const,
