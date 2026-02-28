@@ -1,0 +1,38 @@
+# Mintro Mobile - Antigravity Project Checks
+
+When asked to "do a project check", "run checks", or "check the project", follow these specific steps sequentially to ensure the project's maximum health and stability:
+
+1. **TypeScript Type Check**:
+   Run `npx tsc --noEmit`
+   _Purpose: Validates that all TypeScript types are correct and there are no compilation errors._
+
+2. **Linting Check**:
+   Run `npm run lint`
+   _Purpose: Verifies that the code follows the ESLint configuration and best practices._
+
+3. **Security Audit**:
+   Run `npm audit --audit-level=high`
+   _Purpose: Checks for high-severity vulnerabilities in installed package dependencies._
+   _(Note: Do not automatically run `npm audit fix` unless explicitly instructed, as it may cause breaking changes)._
+
+4. **Expo Project Health (Doctor) Check**:
+   Run `npx expo-doctor`
+   _Purpose: Diagnoses common issues with the Expo project setup, conflicting package versions, and configuration errors._
+
+5. **Environment Configuration Check**:
+   Use standard file reading tools (like `view_file` or `list_dir`) to verify that the `.env` file exists and contains necessary variables for Solana and the app (e.g., `EXPO_PUBLIC_SOLANA_CLUSTER`, `EXPO_PUBLIC_RPC_URL`).
+   _Purpose: Ensures the app will not fail at runtime or build time due to missing environment configuration._
+
+6. **Git Status & Branch Check**:
+   Run `git status`
+   _Purpose: Checks if there are any pending uncommitted changes, messy working trees, or if the repository is in a detached HEAD state._
+
+7. **Dependency Check** _(Optional)_:
+   Run `npx depcheck`
+   _Purpose: Checks for unused or missing dependencies in `package.json` to keep the bundle size clean._
+
+8. **State Management & Storage Code Review** _(Manual Review)_:
+   Verify that `zustand` stores in `/stores` and `AsyncStorage` implementations in `/lib/storage.ts` are free of immediate runtime warnings, race conditions, or obvious logic flaws.
+
+9. **Review and Report**:
+   Compile the results of all the above commands and checks. Present a clear summary of which passed and any errors or warnings found. If there are minor issues (like simple lint errors), provide a summary of the fixes you make automatically. For bigger decisions, propose the fix to the user.

@@ -1,34 +1,45 @@
-import { Connection, clusterApiUrl, type Cluster } from '@solana/web3.js';
+import { Connection, clusterApiUrl } from '@solana/web3.js';
+import type { SolanaCluster } from '@/stores/wallet-store';
 
 // ---------------------------------------------------------------------------
-// Config — all values come from process.env (EXPO_PUBLIC_ prefix required by
-// Metro so they are inlined at build time and available in client bundles).
+// RPC URLs — read from env at build time (EXPO_PUBLIC_ prefix required by Metro).
 // ---------------------------------------------------------------------------
-const RAW_CLUSTER = process.env.EXPO_PUBLIC_SOLANA_CLUSTER ?? 'devnet';
-const VALID_CLUSTERS: ReadonlyArray<Cluster> = ['devnet', 'testnet', 'mainnet-beta'];
+const DEVNET_RPC_URL =
+  process.env.EXPO_PUBLIC_DEVNET_RPC_URL?.trim() || clusterApiUrl('devnet');
 
-if (!VALID_CLUSTERS.includes(RAW_CLUSTER as Cluster)) {
-  throw new Error(
-    `[solana] EXPO_PUBLIC_SOLANA_CLUSTER must be one of ${VALID_CLUSTERS.join(', ')}. Got: "${RAW_CLUSTER}"`,
-  );
+const MAINNET_RPC_URL =
+  process.env.EXPO_PUBLIC_MAINNET_RPC_URL?.trim() || clusterApiUrl('mainnet-beta');
+
+/** Returns the RPC endpoint URL for the given cluster. */
+export function getRpcUrl(cluster: SolanaCluster): string {
+  return cluster === 'mainnet-beta' ? MAINNET_RPC_URL : DEVNET_RPC_URL;
 }
 
-export const SOLANA_CLUSTER = RAW_CLUSTER as Cluster;
-export const IS_DEVNET = SOLANA_CLUSTER === 'devnet';
-
-const RPC_URL =
-  process.env.EXPO_PUBLIC_RPC_URL?.trim() || clusterApiUrl(SOLANA_CLUSTER);
-
 // ---------------------------------------------------------------------------
-// Singleton connection — avoids opening a new WebSocket on every hook render.
+// Singleton connection — lazily created. resetConnection() forces a new one
+// on the next call (e.g. after cluster switch).
 // ---------------------------------------------------------------------------
 let _connection: Connection | null = null;
 
 export function getConnection(): Connection {
   if (!_connection) {
-    _connection = new Connection(RPC_URL, { commitment: 'confirmed' });
+    // Import inline to avoid circular dependency at module init time.
+    const { useWalletStore } = require('@/stores/wallet-store');
+    const cluster: SolanaCluster = useWalletStore.getState().cluster;
+    _connection = new Connection(getRpcUrl(cluster), { commitment: 'confirmed' });
   }
   return _connection;
+}
+
+/** Drop the cached connection so the next getConnection() creates a fresh one. */
+export function resetConnection(): void {
+  _connection = null;
+}
+
+/** Helper — returns the cluster label suitable for MWA authorize(). */
+export function getSolanaCluster(): SolanaCluster {
+  const { useWalletStore } = require('@/stores/wallet-store');
+  return useWalletStore.getState().cluster;
 }
 
 // ---------------------------------------------------------------------------
@@ -36,6 +47,6 @@ export function getConnection(): Connection {
 // ---------------------------------------------------------------------------
 export const APP_IDENTITY = {
   name: process.env.EXPO_PUBLIC_APP_NAME ?? 'CyberCard Arena',
-  uri: `${process.env.EXPO_PUBLIC_APP_SCHEME ?? 'project'}://`,
+  uri: `${process.env.EXPO_PUBLIC_APP_URI ?? 'https://cybercard.arena'}`,
   icon: process.env.EXPO_PUBLIC_APP_ICON ?? 'favicon.ico',
 } as const;

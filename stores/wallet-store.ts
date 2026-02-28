@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export type SolanaCluster = 'devnet' | 'mainnet-beta';
+
 interface WalletState {
   /** Base58-encoded public key of the connected wallet, or null when disconnected. */
   connectedPublicKey: string | null;
@@ -15,12 +17,15 @@ interface WalletState {
   solBalance: number | null;
   /** Whether a balance fetch is in progress. */
   balanceLoading: boolean;
+  /** Active Solana cluster — determines which RPC URL to use. */
+  cluster: SolanaCluster;
 
   // --- actions ---
   setConnectedPublicKey: (key: string | null) => void;
   setAuthToken: (token: string | null) => void;
   setSolBalance: (balance: number | null) => void;
   setBalanceLoading: (loading: boolean) => void;
+  setCluster: (cluster: SolanaCluster) => void;
   /** Fetch SOL balance from the RPC endpoint. */
   fetchBalance: () => Promise<void>;
   /** Wipes wallet session from both memory and AsyncStorage. */
@@ -34,15 +39,32 @@ export const useWalletStore = create<WalletState>()(
       authToken: null,
       solBalance: null,
       balanceLoading: false,
+      cluster: 'devnet',
 
       setConnectedPublicKey: (key) => set({ connectedPublicKey: key }),
       setAuthToken: (token) => set({ authToken: token }),
       setSolBalance: (balance) => set({ solBalance: balance }),
       setBalanceLoading: (loading) => set({ balanceLoading: loading }),
+      setCluster: (cluster) => {
+        // Disconnect wallet and reset balance on cluster change
+        set({
+          cluster,
+          connectedPublicKey: null,
+          authToken: null,
+          solBalance: null,
+          balanceLoading: false,
+        });
+        // Reset connection so it picks up the new RPC URL
+        const { resetConnection } = require('@/lib/solana');
+        resetConnection();
+      },
       fetchBalance: async () => {
-        const pubkey = get().connectedPublicKey;
+        const { connectedPublicKey: pubkey, solBalance: currentBalance } = get();
         if (!pubkey) return;
-        set({ balanceLoading: true });
+        // Only show loading indicator on initial fetch, not periodic refreshes
+        if (currentBalance === null) {
+          set({ balanceLoading: true });
+        }
         try {
           const { PublicKey, LAMPORTS_PER_SOL } = await import('@solana/web3.js');
           const { getConnection } = await import('@/lib/solana');
@@ -61,6 +83,7 @@ export const useWalletStore = create<WalletState>()(
       partialize: (state) => ({
         connectedPublicKey: state.connectedPublicKey,
         authToken: state.authToken,
+        cluster: state.cluster,
       }),
       storage: createJSONStorage(() => AsyncStorage),
     },

@@ -29,7 +29,7 @@ import {
 } from '@solana/web3.js';
 
 import { useWalletStore } from '@/stores/wallet-store';
-import { APP_IDENTITY, SOLANA_CLUSTER, getConnection } from '@/lib/solana';
+import { APP_IDENTITY, getSolanaCluster, getConnection } from '@/lib/solana';
 
 // ---------------------------------------------------------------------------
 // Typed error
@@ -148,14 +148,14 @@ export function useWallet() {
   //      fall back to wallet.authorize() which shows the popup.
   // --------------------------------------------------------------------------
   const connect = useCallback(async (): Promise<PublicKey> => {
-    log('connect() called, cluster:', SOLANA_CLUSTER);
+    log('connect() called, cluster:', getSolanaCluster());
     setConnecting(true);
 
     try {
       const walletAddress = await transact(async (wallet: Web3MobileWallet) => {
         log('Calling wallet.authorize…');
         const authResult = await wallet.authorize({
-          cluster: SOLANA_CLUSTER,
+          cluster: getSolanaCluster(),
           identity: APP_IDENTITY,
         });
         log('wallet.authorize succeeded');

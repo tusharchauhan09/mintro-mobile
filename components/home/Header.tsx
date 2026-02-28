@@ -7,11 +7,48 @@ import {
   Alert,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { useNavigation } from 'expo-router';
+import { DrawerActions } from '@react-navigation/routers';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { PublicKey } from '@solana/web3.js';
 import { colors, spacing, fonts, radii } from '@/constants/theme';
 import { useWalletStore } from '@/stores/wallet-store';
-import { APP_IDENTITY, SOLANA_CLUSTER } from '@/lib/solana';
+import { APP_IDENTITY, getSolanaCluster } from '@/lib/solana';
+
+/** Official Solana logo rendered as inline SVG. */
+function SolanaLogo({ size = 16 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 508.07 398.17">
+      <Defs>
+        <LinearGradient id="sol_a" x1="463" y1="7.16" x2="182.39" y2="544.62" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor="#00FFA3" />
+          <Stop offset="1" stopColor="#DC1FFF" />
+        </LinearGradient>
+        <LinearGradient id="sol_b" x1="340.31" y1="-56.9" x2="59.71" y2="480.57" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor="#00FFA3" />
+          <Stop offset="1" stopColor="#DC1FFF" />
+        </LinearGradient>
+        <LinearGradient id="sol_c" x1="401.26" y1="-25.08" x2="120.66" y2="512.39" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor="#00FFA3" />
+          <Stop offset="1" stopColor="#DC1FFF" />
+        </LinearGradient>
+      </Defs>
+      <Path
+        d="M82.55 303.89A16.63 16.63 0 0 1 94.3 299h405.45a8.3 8.3 0 0 1 5.87 14.18l-80.09 80.09a16.61 16.61 0 0 1-11.75 4.86H8.33a8.31 8.31 0 0 1-5.88-14.18z"
+        fill="url(#sol_a)"
+      />
+      <Path
+        d="M82.55 4.85A17.08 17.08 0 0 1 94.3 0h405.45a8.3 8.3 0 0 1 5.87 14.18l-80.09 80.09a16.61 16.61 0 0 1-11.75 4.86H8.33A8.31 8.31 0 0 1 2.45 85z"
+        fill="url(#sol_b)"
+      />
+      <Path
+        d="M425.53 153.42a16.61 16.61 0 0 0-11.75-4.86H8.33a8.31 8.31 0 0 0-5.88 14.18l80.1 80.09a16.6 16.6 0 0 0 11.75 4.86h405.45a8.3 8.3 0 0 0 5.87-14.18z"
+        fill="url(#sol_c)"
+      />
+    </Svg>
+  );
+}
 
 // Safe require — MWA native module only exists in dev client builds, not Expo Go.
 let transact: any = null;
@@ -27,8 +64,7 @@ function shortenAddress(address: string, chars = 4): string {
 }
 
 /** Format SOL balance for display. */
-function formatBalance(balance: number | null, loading: boolean): string {
-  if (loading) return '—.——';
+function formatBalance(balance: number | null): string {
   if (balance === null) return '0.00';
   if (balance < 0.01 && balance > 0) return '<0.01';
   return balance.toFixed(2);
@@ -47,8 +83,9 @@ export default function Header() {
   const insets = useSafeAreaInsets();
   const connectedPublicKey = useWalletStore((s) => s.connectedPublicKey);
   const solBalance = useWalletStore((s) => s.solBalance);
-  const balanceLoading = useWalletStore((s) => s.balanceLoading);
   const fetchBalance = useWalletStore((s) => s.fetchBalance);
+  const navigation = useNavigation();
+  const drawerNavigation = navigation.getParent('drawer' as any);
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
 
@@ -77,7 +114,7 @@ export default function Header() {
     try {
       const walletAddress = await transact(async (wallet: any) => {
         const authResult = await wallet.authorize({
-          cluster: SOLANA_CLUSTER,
+          cluster: getSolanaCluster(),
           identity: APP_IDENTITY,
         });
 
@@ -128,7 +165,11 @@ export default function Header() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
       {/* Left: Hamburger */}
-      <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.iconBtn}
+        activeOpacity={0.7}
+        onPress={() => drawerNavigation?.dispatch(DrawerActions.openDrawer())}
+      >
         <Feather name="menu" size={22} color={colors.textPrimary} />
       </TouchableOpacity>
 
@@ -136,11 +177,11 @@ export default function Header() {
       <View style={styles.actions}>
         {/* SOL balance pill */}
         <View style={styles.solPill}>
-          <View style={styles.solDot}>
-            <Text style={styles.solDotText}>◎</Text>
+          <View style={styles.solIconWrap}>
+            <SolanaLogo size={16} />
           </View>
           <Text style={styles.solValue}>
-            {formatBalance(solBalance, balanceLoading)} SOL
+            {formatBalance(solBalance)} SOL
           </Text>
         </View>
 
@@ -227,19 +268,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderSubtle,
   },
-  solDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#9945FF',
+  solIconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#1A1A2E',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  solDotText: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    fontFamily: fonts.bold,
-    marginTop: -1,
   },
   solValue: {
     fontSize: 12,
