@@ -1,35 +1,50 @@
-import { useEffect, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
-import { Feather, Ionicons } from '@expo/vector-icons';
-import { useNavigation } from 'expo-router';
-import { DrawerActions } from '@react-navigation/routers';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { PublicKey } from '@solana/web3.js';
-import { colors, spacing, fonts, radii } from '@/constants/theme';
-import { useWalletStore } from '@/stores/wallet-store';
-import { APP_IDENTITY, getSolanaCluster } from '@/lib/solana';
+import { colors, fonts, radii, spacing } from "@/constants/theme";
+import { APP_IDENTITY, getSolanaCluster } from "@/lib/solana";
+import { useWalletStore } from "@/stores/wallet-store";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import { DrawerActions } from "@react-navigation/routers";
+import { PublicKey } from "@solana/web3.js";
+import { useNavigation } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 
 /** Official Solana logo rendered as inline SVG. */
 function SolanaLogo({ size = 16 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 508.07 398.17">
       <Defs>
-        <LinearGradient id="sol_a" x1="463" y1="7.16" x2="182.39" y2="544.62" gradientUnits="userSpaceOnUse">
+        <LinearGradient
+          id="sol_a"
+          x1="463"
+          y1="7.16"
+          x2="182.39"
+          y2="544.62"
+          gradientUnits="userSpaceOnUse"
+        >
           <Stop offset="0" stopColor="#00FFA3" />
           <Stop offset="1" stopColor="#DC1FFF" />
         </LinearGradient>
-        <LinearGradient id="sol_b" x1="340.31" y1="-56.9" x2="59.71" y2="480.57" gradientUnits="userSpaceOnUse">
+        <LinearGradient
+          id="sol_b"
+          x1="340.31"
+          y1="-56.9"
+          x2="59.71"
+          y2="480.57"
+          gradientUnits="userSpaceOnUse"
+        >
           <Stop offset="0" stopColor="#00FFA3" />
           <Stop offset="1" stopColor="#DC1FFF" />
         </LinearGradient>
-        <LinearGradient id="sol_c" x1="401.26" y1="-25.08" x2="120.66" y2="512.39" gradientUnits="userSpaceOnUse">
+        <LinearGradient
+          id="sol_c"
+          x1="401.26"
+          y1="-25.08"
+          x2="120.66"
+          y2="512.39"
+          gradientUnits="userSpaceOnUse"
+        >
           <Stop offset="0" stopColor="#00FFA3" />
           <Stop offset="1" stopColor="#DC1FFF" />
         </LinearGradient>
@@ -53,7 +68,8 @@ function SolanaLogo({ size = 16 }: { size?: number }) {
 // Safe require — MWA native module only exists in dev client builds, not Expo Go.
 let transact: any = null;
 try {
-  transact = require('@solana-mobile/mobile-wallet-adapter-protocol-web3js').transact;
+  transact =
+    require("@solana-mobile/mobile-wallet-adapter-protocol-web3js").transact;
 } catch {
   // Native module not available (Expo Go) — transact stays null
 }
@@ -65,14 +81,14 @@ function shortenAddress(address: string, chars = 4): string {
 
 /** Format SOL balance for display. */
 function formatBalance(balance: number | null): string {
-  if (balance === null) return '0.00';
-  if (balance < 0.01 && balance > 0) return '<0.01';
+  if (balance === null) return "0.00";
+  if (balance < 0.01 && balance > 0) return "<0.01";
   return balance.toFixed(2);
 }
 
 /** Decode base64 address to PublicKey (Phantom returns base64 encoded addresses). */
 function decodeAddress(address: string): PublicKey {
-  if (address.includes('=') || address.includes('+') || address.includes('/')) {
+  if (address.includes("=") || address.includes("+") || address.includes("/")) {
     const bytes = Uint8Array.from(atob(address), (c) => c.charCodeAt(0));
     return new PublicKey(bytes);
   }
@@ -85,12 +101,14 @@ export default function Header() {
   const solBalance = useWalletStore((s) => s.solBalance);
   const fetchBalance = useWalletStore((s) => s.fetchBalance);
   const navigation = useNavigation();
-  const drawerNavigation = navigation.getParent('drawer' as any);
+  const drawerNavigation = navigation.getParent("drawer" as any);
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
 
   const connected = !!connectedPublicKey;
-  const displayAddress = connectedPublicKey ? shortenAddress(connectedPublicKey) : '';
+  const displayAddress = connectedPublicKey
+    ? shortenAddress(connectedPublicKey)
+    : "";
 
   // Fetch balance on connect & periodically refresh
   useEffect(() => {
@@ -103,9 +121,9 @@ export default function Header() {
   const handleConnect = useCallback(async () => {
     if (!transact) {
       Alert.alert(
-        'Wallet Not Found',
-        'Unable to find a Solana wallet on this device. Please install Phantom or another Solana wallet app and make sure you are running a dev client build.',
-        [{ text: 'OK' }],
+        "Wallet Not Found",
+        "Unable to find a Solana wallet on this device. Please install Phantom or another Solana wallet app and make sure you are running a dev client build.",
+        [{ text: "OK" }],
       );
       return;
     }
@@ -119,7 +137,7 @@ export default function Header() {
         });
 
         if (!authResult.accounts || authResult.accounts.length === 0) {
-          throw new Error('No accounts returned from wallet');
+          throw new Error("No accounts returned from wallet");
         }
 
         useWalletStore.getState().setAuthToken(authResult.auth_token);
@@ -130,25 +148,25 @@ export default function Header() {
 
       useWalletStore.getState().setConnectedPublicKey(walletAddress);
     } catch (e: any) {
-      if (__DEV__) console.error('[Header] connect failed:', e);
+      if (__DEV__) console.error("[Header] connect failed:", e);
 
-      const msg = (e?.message ?? '').toLowerCase();
+      const msg = (e?.message ?? "").toLowerCase();
       if (
-        msg.includes('could not be found') ||
-        msg.includes('turbomoduleregistry') ||
-        msg.includes('no activities') ||
-        msg.includes('activity not found')
+        msg.includes("could not be found") ||
+        msg.includes("turbomoduleregistry") ||
+        msg.includes("no activities") ||
+        msg.includes("activity not found")
       ) {
         Alert.alert(
-          'Wallet Not Found',
-          'Unable to find a Solana wallet on this device. Please install Phantom or another Solana wallet app and try again.',
-          [{ text: 'OK' }],
+          "Wallet Not Found",
+          "Unable to find a Solana wallet on this device. Please install Phantom or another Solana wallet app and try again.",
+          [{ text: "OK" }],
         );
       } else {
         Alert.alert(
-          'Connection Failed',
-          e?.message ?? 'Could not connect wallet. Please try again later.',
-          [{ text: 'OK' }],
+          "Connection Failed",
+          e?.message ?? "Could not connect wallet. Please try again later.",
+          [{ text: "OK" }],
         );
       }
     } finally {
@@ -168,7 +186,7 @@ export default function Header() {
       <TouchableOpacity
         style={styles.iconBtn}
         activeOpacity={0.7}
-        onPress={() => drawerNavigation?.dispatch(DrawerActions.openDrawer())}
+        onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
       >
         <Feather name="menu" size={22} color={colors.textPrimary} />
       </TouchableOpacity>
@@ -180,15 +198,17 @@ export default function Header() {
           <View style={styles.solIconWrap}>
             <SolanaLogo size={16} />
           </View>
-          <Text style={styles.solValue}>
-            {formatBalance(solBalance)} SOL
-          </Text>
+          <Text style={styles.solValue}>{formatBalance(solBalance)} SOL</Text>
         </View>
 
         {/* Daily reward */}
         <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
           <View style={styles.badgeDot} />
-          <Ionicons name="trophy-outline" size={19} color={colors.textPrimary} />
+          <Ionicons
+            name="trophy-outline"
+            size={19}
+            color={colors.textPrimary}
+          />
         </TouchableOpacity>
 
         {/* Wallet: connect or address+disconnect */}
@@ -219,9 +239,13 @@ export default function Header() {
             onPress={handleConnect}
             disabled={connecting}
           >
-            <Ionicons name="wallet-outline" size={15} color={colors.textOnAccent} />
+            <Ionicons
+              name="wallet-outline"
+              size={15}
+              color={colors.textOnAccent}
+            />
             <Text style={styles.connectText}>
-              {connecting ? 'Connecting…' : 'Connect'}
+              {connecting ? "Connecting…" : "Connect"}
             </Text>
           </TouchableOpacity>
         )}
@@ -234,10 +258,10 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: spacing.md,
     paddingBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(8, 8, 8, 0.92)',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(8, 8, 8, 0.92)",
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.borderSubtle,
   },
@@ -248,17 +272,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSurface,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   solPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     backgroundColor: colors.bgSurface,
     paddingVertical: 6,
@@ -272,9 +296,9 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#1A1A2E',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#1A1A2E",
+    alignItems: "center",
+    justifyContent: "center",
   },
   solValue: {
     fontSize: 12,
@@ -282,7 +306,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   badgeDot: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     right: 0,
     width: 9,
@@ -294,13 +318,13 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   walletRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   addressPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingVertical: 8,
     paddingLeft: 10,
@@ -326,15 +350,15 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 77, 0, 0.12)',
+    backgroundColor: "rgba(255, 77, 0, 0.12)",
     borderWidth: 1,
-    borderColor: 'rgba(255, 77, 0, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "rgba(255, 77, 0, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   connectBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     backgroundColor: colors.accentPrimary,
     paddingVertical: 9,

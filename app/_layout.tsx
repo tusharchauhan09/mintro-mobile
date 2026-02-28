@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { useFonts } from 'expo-font';
 import {
   PlusJakartaSans_400Regular,
   PlusJakartaSans_500Medium,
   PlusJakartaSans_600SemiBold,
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold,
-} from '@expo-google-fonts/plus-jakarta-sans';
-import * as SplashScreen from 'expo-splash-screen';
+} from "@expo-google-fonts/plus-jakarta-sans";
+import { useFonts } from "expo-font";
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useState } from "react";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -38,7 +38,7 @@ export default function RootLayout() {
   }, [ready]);
 
   if (__DEV__ && fontError) {
-    console.warn('[RootLayout] Font loading error:', fontError);
+    console.warn("[RootLayout] Font loading error:", fontError);
   }
 
   if (!ready) return null;
