@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -14,21 +14,34 @@ import * as SplashScreen from 'expo-splash-screen';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
   });
+  const [timedOut, setTimedOut] = useState(false);
+
+  // Safety timeout — if fonts don't load within 5s, proceed anyway
+  useEffect(() => {
+    const timer = setTimeout(() => setTimedOut(true), 5_000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const ready = fontsLoaded || !!fontError || timedOut;
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (ready) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [ready]);
 
-  if (!fontsLoaded) return null;
+  if (__DEV__ && fontError) {
+    console.warn('[RootLayout] Font loading error:', fontError);
+  }
+
+  if (!ready) return null;
 
   return (
     <>

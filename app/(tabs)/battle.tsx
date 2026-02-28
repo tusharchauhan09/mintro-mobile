@@ -33,7 +33,8 @@ function RadarCircle({ delay }: { delay: number }) {
 
     const timeout = setTimeout(runAnim, delay);
     return () => clearTimeout(timeout);
-  }, []);
+    // delay is a prop that doesn't change; anim is a ref — safe to list
+  }, [anim, delay]);
 
   const size = anim.interpolate({
     inputRange: [0, 1],
@@ -213,8 +214,7 @@ const styles = StyleSheet.create({
   },
   avatarInner: {
     flex: 1,
-    backgroundColor: '#222',
-    background: 'linear-gradient(135deg, #333, #111)',
+    backgroundColor: colors.bgSurfaceElevated,
   },
   findingSection: {
     alignItems: 'center',
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtnPressed: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.bgSurface,
     transform: [{ scale: 0.98 }],
   },
   cancelText: {

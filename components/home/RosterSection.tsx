@@ -1,18 +1,25 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Feather } from '@expo/vector-icons';
-import { colors, spacing, radii, fonts } from '@/constants/theme';
+import { colors, fonts, radii, spacing } from "@/constants/theme";
+import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface RosterCardProps {
   name: string;
   level: number;
   rarity: string;
   role: string;
-  gradientColors: [string, string];
+  gradientColors: readonly [string, string];
   highlighted?: boolean;
 }
 
-function RosterCard({ name, level, rarity, role, gradientColors, highlighted }: RosterCardProps) {
+function RosterCard({
+  name,
+  level,
+  rarity,
+  role,
+  gradientColors,
+  highlighted,
+}: RosterCardProps) {
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.7}>
       <LinearGradient
@@ -23,12 +30,18 @@ function RosterCard({ name, level, rarity, role, gradientColors, highlighted }: 
       />
       <View style={styles.cardContent}>
         <View style={styles.cardRow}>
-          <Text style={styles.cardName} numberOfLines={1}>{name}</Text>
-          <Text style={[styles.levelBadge, highlighted && styles.levelHighlighted]}>
+          <Text style={styles.cardName} numberOfLines={1}>
+            {name}
+          </Text>
+          <Text
+            style={[styles.levelBadge, highlighted && styles.levelHighlighted]}
+          >
             LVL {level}
           </Text>
         </View>
-        <Text style={styles.cardMeta}>{rarity} Class &bull; {role}</Text>
+        <Text style={styles.cardMeta}>
+          {rarity} Class &bull; {role}
+        </Text>
       </View>
       <View style={styles.chevron}>
         <Feather name="chevron-right" size={20} color={colors.textTertiary} />
@@ -53,7 +66,7 @@ export default function RosterSection() {
           level={42}
           rarity="Rare"
           role="Speed Specialist"
-          gradientColors={['#333', '#111']}
+          gradientColors={colors.gradientCardA}
           highlighted
         />
         <RosterCard
@@ -61,7 +74,7 @@ export default function RosterSection() {
           level={15}
           rarity="Common"
           role="Tank"
-          gradientColors={['#2a2a2a', '#1a1a1a']}
+          gradientColors={colors.gradientCardB}
         />
       </View>
     </View>
@@ -70,9 +83,9 @@ export default function RosterSection() {
 
 const styles = StyleSheet.create({
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   sectionTitle: {
@@ -95,8 +108,8 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSubtle,
     borderRadius: radii.md,
     padding: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   cardImg: {
@@ -109,9 +122,9 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
   cardRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 4,
   },
   cardName: {
@@ -124,7 +137,7 @@ const styles = StyleSheet.create({
   levelBadge: {
     fontSize: 11,
     fontFamily: fonts.bold,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     color: colors.textSecondary,
   },

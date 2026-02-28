@@ -62,7 +62,7 @@ export default function BottomTabBar({ state, navigation, onRouteChange }: Props
               <Feather
                 name={config.icon}
                 size={isPrimary ? 26 : 22}
-                color={isPrimary ? '#000' : isFocused ? colors.textPrimary : colors.textSecondary}
+                color={isPrimary ? colors.textOnAccent : isFocused ? colors.textPrimary : colors.textSecondary}
               />
               <Text
                 style={[
@@ -91,9 +91,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   nav: {
-    backgroundColor: 'rgba(20, 20, 20, 0.95)',
+    backgroundColor: colors.navBarBg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: colors.navBarBorder,
     borderRadius: radii.pill,
     paddingVertical: 6,
     paddingHorizontal: 8,
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     gap: 2,
     width: '100%',
     maxWidth: 420,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.8,
     shadowRadius: 40,
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   navLabelPrimary: {
-    color: '#000',
+    color: colors.textOnAccent,
     fontFamily: fonts.extraBold,
     fontSize: 9,
   },

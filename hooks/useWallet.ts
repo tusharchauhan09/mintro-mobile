@@ -49,7 +49,7 @@ export class WalletError extends Error {
 // ---------------------------------------------------------------------------
 
 /** Convert base64 or base64url encoded address bytes → PublicKey. */
-function decodeAddress(address: string): PublicKey {
+export function decodeAddress(address: string): PublicKey {
   try {
     // base58 public keys are always 32–44 chars, no `=` padding, no `+` or `/`
     if (!/[+/=\-_]/.test(address) && address.length <= 44) {

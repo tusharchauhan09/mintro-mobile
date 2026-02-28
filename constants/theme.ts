@@ -10,9 +10,17 @@ export const colors = {
   textPrimary: '#FFFFFF',
   textSecondary: '#999999',
   textTertiary: '#555555',
+  textOnAccent: '#000000',
 
   borderSubtle: 'rgba(255, 255, 255, 0.08)',
   borderHighlight: 'rgba(255, 255, 255, 0.15)',
+
+  navBarBg: 'rgba(20, 20, 20, 0.95)',
+  navBarBorder: 'rgba(255, 255, 255, 0.1)',
+  shadow: '#000000',
+
+  gradientCardA: ['#333333', '#111111'] as const,
+  gradientCardB: ['#2a2a2a', '#1a1a1a'] as const,
 } as const;
 
 export const spacing = {
