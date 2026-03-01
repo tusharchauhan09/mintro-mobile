@@ -65,14 +65,23 @@ export const useWalletStore = create<WalletState>()(
         if (currentBalance === null) {
           set({ balanceLoading: true });
         }
-        try {
-          const { PublicKey, LAMPORTS_PER_SOL } = await import('@solana/web3.js');
-          const { getConnection } = await import('@/lib/solana');
-          const lamports = await getConnection().getBalance(new PublicKey(pubkey));
-          set({ solBalance: lamports / LAMPORTS_PER_SOL, balanceLoading: false });
-        } catch (e) {
-          if (__DEV__) console.warn('[wallet-store] fetchBalance failed:', e);
-          set({ balanceLoading: false });
+
+        const MAX_RETRIES = 3;
+        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+          try {
+            const { PublicKey, LAMPORTS_PER_SOL } = await import('@solana/web3.js');
+            const { getConnection } = await import('@/lib/solana');
+            const lamports = await getConnection().getBalance(new PublicKey(pubkey));
+            set({ solBalance: lamports / LAMPORTS_PER_SOL, balanceLoading: false });
+            return;
+          } catch (e) {
+            if (attempt < MAX_RETRIES - 1) {
+              await new Promise((r) => setTimeout(r, (attempt + 1) * 1000));
+            } else {
+              if (__DEV__) console.warn('[wallet-store] fetchBalance failed after retries:', e);
+              set({ balanceLoading: false });
+            }
+          }
         }
       },
       clearSession: () => set({ connectedPublicKey: null, authToken: null, solBalance: null }),

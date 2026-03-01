@@ -14,8 +14,29 @@ if (__DEV__ && (!supabaseUrl || !supabaseAnonKey)) {
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: asyncStorageAdapter,
-    autoRefreshToken: true,
-    persistSession: true,
+    autoRefreshToken: false,
+    persistSession: false,
     detectSessionInUrl: false, // no browser URL in RN
   },
 });
+
+/**
+ * Set a custom JWT on the Supabase client so that RLS policies
+ * using auth.uid() resolve to our custom token's `sub` claim.
+ * Call this after successful auth-verify or session restore.
+ *
+ * Uses supabase.functions.setAuth() for edge function calls, and
+ * manually sets the session for PostgREST (data) calls.
+ */
+export async function setSupabaseAccessToken(token: string | null) {
+  if (token) {
+    // Set a fake session so PostgREST requests include our custom JWT
+    // in the Authorization header, making auth.uid() resolve correctly.
+    await supabase.auth.setSession({
+      access_token: token,
+      refresh_token: '',
+    });
+  } else {
+    await supabase.auth.signOut();
+  }
+}

@@ -1,5 +1,4 @@
-[project]
-id = "" # Fill in after `supabase init` or link
+project_id = "vvwbqjayraozxcjdjvmj"
 
 [api]
 port = 54321

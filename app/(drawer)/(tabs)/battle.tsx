@@ -33,7 +33,6 @@ function RadarCircle({ delay }: { delay: number }) {
 
     const timeout = setTimeout(runAnim, delay);
     return () => clearTimeout(timeout);
-    // delay is a prop that doesn't change; anim is a ref — safe to list
   }, [anim, delay]);
 
   const size = anim.interpolate({
@@ -112,40 +111,10 @@ export default function BattleScreen() {
           </View>
         </View>
 
-        {/* Finding text */}
+        {/* Finding text + timer */}
         <View style={styles.findingSection}>
           <Text style={styles.findingTitle}>Finding Opponent</Text>
           <Text style={styles.timer}>{timer}</Text>
-        </View>
-
-        {/* Fighter preview card */}
-        <View style={styles.fighterCard}>
-          <View style={styles.fighterHeader}>
-            <View style={styles.fighterInfo}>
-              <View style={styles.fighterNameRow}>
-                <Text style={styles.fighterName}>Neon Drifter #882</Text>
-                <View style={styles.levelBadge}>
-                  <Text style={styles.levelText}>LVL 42</Text>
-                </View>
-              </View>
-              <Text style={styles.fighterClass}>Rare Class • Speed Specialist</Text>
-            </View>
-          </View>
-
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>ATK</Text>
-              <Text style={styles.statValue}>2,450</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>SPD</Text>
-              <Text style={[styles.statValue, { color: colors.accentPrimary }]}>4,100</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>DEF</Text>
-              <Text style={styles.statValue}>1,820</Text>
-            </View>
-          </View>
         </View>
       </View>
 
@@ -230,74 +199,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: fonts.bold,
     color: colors.accentPrimary,
-  },
-  fighterCard: {
-    width: '100%',
-    backgroundColor: colors.bgSurface,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    borderRadius: radii.md,
-    padding: 20,
-    gap: 16,
-  },
-  fighterHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  fighterInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  fighterNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  fighterName: {
-    fontSize: 16,
-    fontFamily: fonts.bold,
-    color: colors.textPrimary,
-  },
-  levelBadge: {
-    backgroundColor: 'rgba(204, 255, 0, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  levelText: {
-    fontSize: 11,
-    fontFamily: fonts.extraBold,
-    color: colors.accentPrimary,
-  },
-  fighterClass: {
-    fontSize: 12,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  statItem: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    padding: 10,
-    borderRadius: radii.sm,
-    alignItems: 'center',
-    gap: 4,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontFamily: fonts.extraBold,
-    color: colors.textTertiary,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  statValue: {
-    fontSize: 14,
-    fontFamily: fonts.bold,
-    color: colors.textPrimary,
   },
   footer: {
     paddingHorizontal: spacing.md,

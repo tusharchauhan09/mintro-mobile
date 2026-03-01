@@ -1,31 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { colors, fonts } from '@/constants/theme';
+import ComingSoon from '@/components/ui/ComingSoon';
 
 export default function ShopScreen() {
-  return (
-    <View style={styles.screen}>
-      <Text style={styles.title}>Shop</Text>
-      <Text style={styles.subtitle}>Coming soon</Text>
-    </View>
-  );
+  return <ComingSoon title="Shop" icon="bag-outline" />;
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.bgVoid,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontFamily: fonts.bold,
-    color: colors.textPrimary,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-  },
-});

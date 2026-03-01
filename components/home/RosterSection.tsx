@@ -1,7 +1,14 @@
 import { colors, fonts, radii, spacing } from "@/constants/theme";
-import { Feather } from "@expo/vector-icons";
+import { useCardStore } from "@/stores/card-store";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 interface RosterCardProps {
   name: string;
@@ -10,6 +17,19 @@ interface RosterCardProps {
   role: string;
   gradientColors: readonly [string, string];
   highlighted?: boolean;
+}
+
+function getGradientForRarity(rarity: string): readonly [string, string] {
+  switch (rarity) {
+    case "LEGENDARY":
+      return ["#FFD700", "#B8860B"] as const;
+    case "EPIC":
+      return ["#9B59B6", "#6C3483"] as const;
+    case "RARE":
+      return ["#3498DB", "#2471A3"] as const;
+    default:
+      return colors.gradientCardA;
+  }
 }
 
 function RosterCard({
@@ -50,7 +70,21 @@ function RosterCard({
   );
 }
 
+function EmptyRoster() {
+  return (
+    <View style={styles.emptyCard}>
+      <Ionicons name="layers-outline" size={28} color={colors.textTertiary} />
+      <Text style={styles.emptyText}>No cards yet — open a pack!</Text>
+    </View>
+  );
+}
+
 export default function RosterSection() {
+  const myCards = useCardStore((s) => s.myCards);
+  const cardsLoading = useCardStore((s) => s.cardsLoading);
+
+  const displayCards = myCards.slice(0, 3);
+
   return (
     <View>
       <View style={styles.sectionHeader}>
@@ -61,21 +95,25 @@ export default function RosterSection() {
       </View>
 
       <View style={styles.list}>
-        <RosterCard
-          name="Neon Drifter #882"
-          level={42}
-          rarity="Rare"
-          role="Speed Specialist"
-          gradientColors={colors.gradientCardA}
-          highlighted
-        />
-        <RosterCard
-          name="Cyber Punk #009"
-          level={15}
-          rarity="Common"
-          role="Tank"
-          gradientColors={colors.gradientCardB}
-        />
+        {cardsLoading && myCards.length === 0 ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="small" color={colors.textSecondary} />
+          </View>
+        ) : displayCards.length === 0 ? (
+          <EmptyRoster />
+        ) : (
+          displayCards.map((card, index) => (
+            <RosterCard
+              key={card.id}
+              name={`${card.card_templates.name} #${card.serial_number}`}
+              level={card.level}
+              rarity={card.card_templates.rarity}
+              role={card.card_templates.element}
+              gradientColors={getGradientForRarity(card.card_templates.rarity)}
+              highlighted={index === 0}
+            />
+          ))
+        )}
       </View>
     </View>
   );
@@ -151,5 +189,25 @@ const styles = StyleSheet.create({
   },
   chevron: {
     paddingRight: 12,
+  },
+  emptyCard: {
+    backgroundColor: colors.bgSurface,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    minHeight: 80,
+  },
+  emptyText: {
+    fontSize: 13,
+    fontFamily: fonts.medium,
+    color: colors.textTertiary,
+  },
+  loadingWrap: {
+    padding: spacing.md,
+    alignItems: "center",
   },
 });

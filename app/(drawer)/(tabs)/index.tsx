@@ -1,10 +1,29 @@
+import { useEffect } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import HeroCard from '@/components/home/HeroCard';
-import StatsGrid from '@/components/home/StatsGrid';
-import RosterSection from '@/components/home/RosterSection';
+import AnnouncementCarousel from '@/components/home/AnnouncementCarousel';
+import DeckPreview from '@/components/home/DeckPreview';
 import { colors, spacing } from '@/constants/theme';
+import { useWalletStore } from '@/stores/wallet-store';
+import { useAuthStore } from '@/stores/auth-store';
+import { useCardStore } from '@/stores/card-store';
 
 export default function HomeScreen() {
+  const connectedPublicKey = useWalletStore((s) => s.connectedPublicKey);
+  const fetchMyCards = useCardStore((s) => s.fetchMyCards);
+  const fetchTemplates = useCardStore((s) => s.fetchTemplates);
+  const fetchUserProfile = useAuthStore((s) => s.fetchUserProfile);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
+  useEffect(() => {
+    if (connectedPublicKey) {
+      fetchMyCards(connectedPublicKey);
+      fetchUserProfile();
+    }
+  }, [connectedPublicKey, fetchMyCards, fetchUserProfile]);
+
   return (
     <View style={styles.screen}>
       <ScrollView
@@ -12,9 +31,8 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <HeroCard />
-        <StatsGrid />
-        <RosterSection />
+        <AnnouncementCarousel />
+        <DeckPreview />
       </ScrollView>
     </View>
   );

@@ -22,7 +22,6 @@ const TAB_CONFIG: Record<string, { label: string; icon: FeatherIcon; primary?: b
   friends: { label: 'Friends', icon: 'users' },
   inventory: { label: 'Inventory', icon: 'grid' },
   battle: { label: 'BATTLE', icon: 'zap', primary: true },
-  rank: { label: 'Rank', icon: 'award' },
   shop: { label: 'Shop', icon: 'shopping-bag' },
 };
 
@@ -128,9 +127,9 @@ function BattleButton({
   }));
 
   const glowStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(glow.value, [0, 1], [0.35, 0.7], Extrapolation.CLAMP),
+    opacity: interpolate(glow.value, [0, 1], [0.1, 0.3], Extrapolation.CLAMP),
     transform: [
-      { scale: interpolate(glow.value, [0, 1], [0.8, 1.1], Extrapolation.CLAMP) },
+      { scale: interpolate(glow.value, [0, 1], [0.85, 1], Extrapolation.CLAMP) },
     ],
   }));
 
@@ -162,8 +161,8 @@ export default function BottomTabBar({ state, navigation, onRouteChange }: Props
     onRouteChange?.(currentRouteName);
   }, [currentRouteName, onRouteChange]);
 
-  const leftTabs = state.routes.filter((r) => ['index', 'friends', 'inventory'].includes(r.name));
-  const rightTabs = state.routes.filter((r) => ['rank', 'shop'].includes(r.name));
+  const leftTabs = state.routes.filter((r) => ['index', 'friends'].includes(r.name));
+  const rightTabs = state.routes.filter((r) => ['inventory', 'shop'].includes(r.name));
   const battleRoute = state.routes.find((r) => r.name === 'battle');
 
   const makeOnPress = (route: (typeof state.routes)[0]) => () => {
@@ -298,33 +297,33 @@ const styles = StyleSheet.create({
   /* Center battle */
   battleWrapper: {
     alignItems: 'center',
-    marginTop: -20,
+    marginTop: -16,
     width: BATTLE_SIZE + 20,
   },
 
   battleGlow: {
     position: 'absolute',
-    top: -4,
-    width: BATTLE_SIZE + 24,
-    height: BATTLE_SIZE + 24,
-    borderRadius: (BATTLE_SIZE + 24) / 2,
+    top: 0,
+    width: BATTLE_SIZE + 16,
+    height: BATTLE_SIZE + 16,
+    borderRadius: 18,
     backgroundColor: colors.accentPrimary,
   },
 
   battleBtn: {
     width: BATTLE_SIZE,
     height: BATTLE_SIZE,
-    borderRadius: BATTLE_SIZE / 2,
+    borderRadius: 16,
     backgroundColor: colors.accentPrimary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: colors.bgSurface,
     shadowColor: colors.accentPrimary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
   battleLabel: {

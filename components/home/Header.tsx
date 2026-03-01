@@ -1,12 +1,18 @@
 import { colors, fonts, radii, spacing } from "@/constants/theme";
-import { APP_IDENTITY, getSolanaCluster } from "@/lib/solana";
 import { useWalletStore } from "@/stores/wallet-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { DrawerActions } from "@react-navigation/routers";
-import { PublicKey } from "@solana/web3.js";
 import { useNavigation } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 
@@ -65,15 +71,6 @@ function SolanaLogo({ size = 16 }: { size?: number }) {
   );
 }
 
-// Safe require — MWA native module only exists in dev client builds, not Expo Go.
-let transact: any = null;
-try {
-  transact =
-    require("@solana-mobile/mobile-wallet-adapter-protocol-web3js").transact;
-} catch {
-  // Native module not available (Expo Go) — transact stays null
-}
-
 /** Truncate a base58 public key to `Abcd…wxyz` form. */
 function shortenAddress(address: string, chars = 4): string {
   return `${address.slice(0, chars)}…${address.slice(-chars)}`;
@@ -86,23 +83,13 @@ function formatBalance(balance: number | null): string {
   return balance.toFixed(2);
 }
 
-/** Decode base64 address to PublicKey (Phantom returns base64 encoded addresses). */
-function decodeAddress(address: string): PublicKey {
-  if (address.includes("=") || address.includes("+") || address.includes("/")) {
-    const bytes = Uint8Array.from(atob(address), (c) => c.charCodeAt(0));
-    return new PublicKey(bytes);
-  }
-  return new PublicKey(address);
-}
-
 export default function Header() {
   const insets = useSafeAreaInsets();
   const connectedPublicKey = useWalletStore((s) => s.connectedPublicKey);
   const solBalance = useWalletStore((s) => s.solBalance);
   const fetchBalance = useWalletStore((s) => s.fetchBalance);
+  const authLoading = useAuthStore((s) => s.authLoading);
   const navigation = useNavigation();
-  const drawerNavigation = navigation.getParent("drawer" as any);
-  const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
 
   const connected = !!connectedPublicKey;
@@ -118,40 +105,24 @@ export default function Header() {
     return () => clearInterval(interval);
   }, [connected, fetchBalance]);
 
-  const handleConnect = useCallback(async () => {
-    if (!transact) {
-      Alert.alert(
-        "Wallet Not Found",
-        "Unable to find a Solana wallet on this device. Please install Phantom or another Solana wallet app and make sure you are running a dev client build.",
-        [{ text: "OK" }],
-      );
-      return;
-    }
-
-    setConnecting(true);
+  const handleDisconnect = useCallback(async () => {
+    setDisconnecting(true);
     try {
-      const walletAddress = await transact(async (wallet: any) => {
-        const authResult = await wallet.authorize({
-          cluster: getSolanaCluster(),
-          identity: APP_IDENTITY,
-        });
+      await useAuthStore.getState().logout();
+    } catch (e) {
+      if (__DEV__) console.warn("[Header] logout failed:", e);
+    } finally {
+      setDisconnecting(false);
+    }
+  }, []);
 
-        if (!authResult.accounts || authResult.accounts.length === 0) {
-          throw new Error("No accounts returned from wallet");
-        }
-
-        useWalletStore.getState().setAuthToken(authResult.auth_token);
-
-        const pubkey = decodeAddress(authResult.accounts[0].address);
-        return pubkey.toBase58();
-      });
-
-      useWalletStore.getState().setConnectedPublicKey(walletAddress);
+  const handleConnect = useCallback(async () => {
+    try {
+      await useAuthStore.getState().authenticateWithWallet();
     } catch (e: any) {
-      if (__DEV__) console.error("[Header] connect failed:", e);
-
       const msg = (e?.message ?? "").toLowerCase();
       if (
+        msg.includes("mwa not available") ||
         msg.includes("could not be found") ||
         msg.includes("turbomoduleregistry") ||
         msg.includes("no activities") ||
@@ -159,25 +130,15 @@ export default function Header() {
       ) {
         Alert.alert(
           "Wallet Not Found",
-          "Unable to find a Solana wallet on this device. Please install Phantom or another Solana wallet app and try again.",
+          "Please install Phantom or another Solana wallet app and use a dev client build.",
           [{ text: "OK" }],
         );
+      } else if (msg.includes("user reject") || msg.includes("cancel")) {
+        // User cancelled — silent
       } else {
-        Alert.alert(
-          "Connection Failed",
-          e?.message ?? "Could not connect wallet. Please try again later.",
-          [{ text: "OK" }],
-        );
+        Alert.alert("Connection Failed", e?.message ?? "Please try again.");
       }
-    } finally {
-      setConnecting(false);
     }
-  }, []);
-
-  const handleDisconnect = useCallback(async () => {
-    setDisconnecting(true);
-    useWalletStore.getState().clearSession();
-    setDisconnecting(false);
   }, []);
 
   return (
@@ -202,7 +163,11 @@ export default function Header() {
         </View>
 
         {/* Daily reward */}
-        <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          activeOpacity={0.7}
+          onPress={() => Alert.alert("Coming Soon", "Daily rewards will be available in a future update.")}
+        >
           <View style={styles.badgeDot} />
           <Ionicons
             name="trophy-outline"
@@ -234,18 +199,22 @@ export default function Header() {
           </View>
         ) : (
           <TouchableOpacity
-            style={styles.connectBtn}
+            style={[styles.connectBtn, authLoading && styles.connectBtnDisabled]}
             activeOpacity={0.8}
             onPress={handleConnect}
-            disabled={connecting}
+            disabled={authLoading}
           >
-            <Ionicons
-              name="wallet-outline"
-              size={15}
-              color={colors.textOnAccent}
-            />
+            {authLoading ? (
+              <ActivityIndicator size="small" color={colors.textOnAccent} />
+            ) : (
+              <Ionicons
+                name="wallet-outline"
+                size={15}
+                color={colors.textOnAccent}
+              />
+            )}
             <Text style={styles.connectText}>
-              {connecting ? "Connecting…" : "Connect"}
+              {authLoading ? "Connecting..." : "Connect"}
             </Text>
           </TouchableOpacity>
         )}
@@ -364,6 +333,9 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 14,
     borderRadius: radii.pill,
+  },
+  connectBtnDisabled: {
+    opacity: 0.7,
   },
   connectText: {
     fontSize: 12,

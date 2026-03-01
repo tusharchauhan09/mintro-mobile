@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { colors, spacing, fonts, radii } from '@/constants/theme';
 import { useWalletStore, type SolanaCluster } from '@/stores/wallet-store';
+import { useAuthStore } from '@/stores/auth-store';
 
 function CustomDrawerContent(_props: DrawerContentComponentProps) {
   const insets = useSafeAreaInsets();
@@ -21,6 +22,7 @@ function CustomDrawerContent(_props: DrawerContentComponentProps) {
     (next: SolanaCluster) => {
       if (next !== cluster) {
         setCluster(next);
+        useAuthStore.getState().clearAuth();
       }
     },
     [cluster, setCluster],

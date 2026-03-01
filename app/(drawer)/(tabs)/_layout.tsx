@@ -22,9 +22,8 @@ export default function TabLayout() {
       >
         <Tabs.Screen name="index" />
         <Tabs.Screen name="friends" />
-        <Tabs.Screen name="inventory" />
         <Tabs.Screen name="battle" />
-        <Tabs.Screen name="rank" />
+        <Tabs.Screen name="inventory" />
         <Tabs.Screen name="shop" />
       </Tabs>
     </View>

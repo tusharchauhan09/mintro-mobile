@@ -10,6 +10,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
+import { useAuthStore } from "@/stores/auth-store";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -23,13 +24,26 @@ export default function RootLayout() {
   });
   const [timedOut, setTimedOut] = useState(false);
 
+  const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  const sessionToken = useAuthStore((s) => s.sessionToken);
+
   // Safety timeout — if fonts don't load within 5s, proceed anyway
   useEffect(() => {
     const timer = setTimeout(() => setTimedOut(true), 5_000);
     return () => clearTimeout(timer);
   }, []);
 
-  const ready = fontsLoaded || !!fontError || timedOut;
+  const fontsReady = fontsLoaded || !!fontError || timedOut;
+  const ready = fontsReady && hasHydrated;
+
+  // Clear expired session on hydration
+  useEffect(() => {
+    if (!hasHydrated) return;
+    const { isSessionExpired, clearAuth } = useAuthStore.getState();
+    if (sessionToken && isSessionExpired()) {
+      clearAuth();
+    }
+  }, [hasHydrated, sessionToken]);
 
   useEffect(() => {
     if (ready) {

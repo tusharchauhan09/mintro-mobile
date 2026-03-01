@@ -1,6 +1,14 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CardTemplate, CardWithTemplate, Listing } from '@/types/database';
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+
+/** Lazy import — avoids initializing Supabase client if credentials are invalid. */
+function getSupabase() {
+  return require('@/lib/supabase').supabase as import('@supabase/supabase-js').SupabaseClient;
+}
 
 type ListingWithCard = Listing & { cards: CardWithTemplate };
 
@@ -9,12 +17,17 @@ interface CardState {
   templates: CardTemplate[];
   myCards: CardWithTemplate[];
   activeListings: ListingWithCard[];
+  deck: string[]; // up to 3 card IDs chosen for battle
 
   // --- loading states ---
   templatesLoading: boolean;
   cardsLoading: boolean;
   listingsLoading: boolean;
   mintingPack: boolean;
+
+  // --- deck actions ---
+  setDeck: (ids: string[]) => void;
+  toggleDeckCard: (cardId: string) => void;
 
   // --- actions ---
   fetchTemplates: () => Promise<void>;
@@ -25,25 +38,39 @@ interface CardState {
   cancelListing: (listingId: string) => Promise<boolean>;
 }
 
-export const useCardStore = create<CardState>()((set, get) => ({
+export const useCardStore = create<CardState>()(
+  persist(
+  (set, get) => ({
   templates: [],
   myCards: [],
   activeListings: [],
+  deck: [],
   templatesLoading: false,
   cardsLoading: false,
   listingsLoading: false,
   mintingPack: false,
 
+  setDeck: (ids: string[]) => set({ deck: ids.slice(0, 3) }),
+
+  toggleDeckCard: (cardId: string) => {
+    const { deck } = get();
+    if (deck.includes(cardId)) {
+      set({ deck: deck.filter((id) => id !== cardId) });
+    } else if (deck.length < 3) {
+      set({ deck: [...deck, cardId] });
+    }
+  },
+
   fetchTemplates: async () => {
     set({ templatesLoading: true });
     try {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('card_templates')
         .select('*')
         .order('rarity');
 
       if (error) throw error;
-      set({ templates: data ?? [] });
+      set({ templates: (data as CardTemplate[]) ?? [] });
     } catch (e) {
       if (__DEV__) console.warn('[card-store] fetchTemplates failed:', e);
     } finally {
@@ -55,7 +82,7 @@ export const useCardStore = create<CardState>()((set, get) => ({
     set({ cardsLoading: true });
     try {
       // Resolve user id from wallet address
-      const { data: user } = await supabase
+      const { data: user } = await getSupabase()
         .from('users')
         .select('id')
         .eq('wallet_address', walletAddress)
@@ -66,7 +93,7 @@ export const useCardStore = create<CardState>()((set, get) => ({
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('cards')
         .select('*, card_templates(*)')
         .eq('owner_id', user.id)
@@ -84,7 +111,7 @@ export const useCardStore = create<CardState>()((set, get) => ({
   fetchActiveListings: async () => {
     set({ listingsLoading: true });
     try {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('listings')
         .select('*, cards(*, card_templates(*))')
         .eq('status', 'ACTIVE')
@@ -102,14 +129,23 @@ export const useCardStore = create<CardState>()((set, get) => ({
   openPack: async (walletAddress: string, token: string) => {
     set({ mintingPack: true });
     try {
-      const { data, error } = await supabase.functions.invoke('mint-pack', {
-        body: { wallet_address: walletAddress },
-        headers: { Authorization: `Bearer ${token}` },
+      // Call edge function directly with custom JWT — supabase.functions.invoke
+      // doesn't reliably pass custom Authorization headers in all versions.
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/mint-pack`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ wallet_address: walletAddress }),
       });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? `mint-pack failed (${res.status})`);
+      }
 
-      const newCards = data?.cards as CardWithTemplate[] | undefined;
+      const { cards: newCards } = (await res.json()) as { cards: CardWithTemplate[] };
       if (newCards?.length) {
         set((state) => ({ myCards: [...newCards, ...state.myCards] }));
       }
@@ -124,7 +160,7 @@ export const useCardStore = create<CardState>()((set, get) => ({
 
   listCard: async (cardId: string, sellerWallet: string, priceSol: number) => {
     try {
-      const { data: user } = await supabase
+      const { data: user } = await getSupabase()
         .from('users')
         .select('id')
         .eq('wallet_address', sellerWallet)
@@ -132,7 +168,7 @@ export const useCardStore = create<CardState>()((set, get) => ({
 
       if (!user) return false;
 
-      const { error } = await supabase.from('listings').insert({
+      const { error } = await getSupabase().from('listings').insert({
         card_id: cardId,
         seller_id: user.id,
         price_sol: priceSol,
@@ -149,7 +185,7 @@ export const useCardStore = create<CardState>()((set, get) => ({
 
   cancelListing: async (listingId: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('listings')
         .update({ status: 'CANCELLED' as const })
         .eq('id', listingId);
@@ -165,4 +201,10 @@ export const useCardStore = create<CardState>()((set, get) => ({
       return false;
     }
   },
-}));
+}),
+  {
+    name: 'card-store',
+    storage: createJSONStorage(() => AsyncStorage),
+    partialize: (state) => ({ deck: state.deck }),
+  },
+));

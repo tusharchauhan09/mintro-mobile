@@ -16,13 +16,16 @@ supabase db push                      # Push migrations
 
 ## Structure
 ```
-app/                    Expo Router v6. Groups: (auth)/, (tabs)/
+app/                    Expo Router v6. Groups: (auth)/, (drawer)/(tabs)/
+app/(auth)/             Auth screens — connect.tsx (MWA wallet connect)
+app/(drawer)/(tabs)/    Main app tabs after optional auth
 supabase/functions/     Edge Functions (Deno) — auth-challenge, auth-verify, mint-pack, marketplace-buy
-supabase/migrations/    SQL + RLS
+supabase/migrations/    SQL + RLS + seed data (5 migrations)
 constants/theme.ts      Design tokens — ALL colors/spacing/fonts here
 stores/                 Zustand v5 stores (wallet-store, card-store, auth-store)
 lib/solana.ts           Singleton Connection, APP_IDENTITY
 lib/supabase.ts         Typed Supabase client + AsyncStorage session adapter
+lib/decode-address.ts   Shared base64→base58 address decoder (isolated from MWA imports)
 hooks/useWallet.ts      MWA hook (connect, disconnect, getBalance, sendSOL)
 types/database.ts       Supabase Row/Insert/Update types
 ```
@@ -40,8 +43,16 @@ Zustand v5 (no TanStack Query) · MWA (`@solana-mobile/mobile-wallet-adapter-pro
 7. **No unnecessary animations** — simple and functional
 8. **Edge functions use Deno** — `Deno.serve()`, URL imports (`https://esm.sh/...`), `@ts-nocheck` for IDE
 
-## Auth Flow
-App open → AsyncStorage session check → valid: `(tabs)/` | invalid: `(auth)/connect` → MWA authorize → `auth-challenge` → sign nonce → `auth-verify` → JWT session → `(tabs)/`
+## Auth Flow (Updated 2026-03-01)
+**No route guard** — users land on home screen unauthenticated. Flow:
+1. App open → Home screen (unauthenticated browsing OK)
+2. User opens Drawer → picks Devnet/Mainnet cluster
+3. User taps "Connect Wallet" in Header → `auth-store.authenticateWithWallet()`:
+   - MWA `transact()` → `wallet.authorize()` → stores wallet address + MWA auth token
+   - Generates local JWT immediately (7d expiry) → sets on Supabase client via `setSupabaseAccessToken()`
+   - Background: `trySupabaseAuth()` → `auth-challenge` (nonce) → sign nonce via MWA → `auth-verify` → user upserted in DB → session upgraded to real Supabase JWT
+   - After Supabase auth: `fetchUserProfile()` called to load user data
+4. Logout: Header disconnect → `auth-store.logout()` → MWA `deauthorize()` → clear both stores
 
 ## DB Tables
 `users`, `card_templates`, `cards`, `listings`, `nonces`, `battles`, `battle_moves` — RLS enabled, `price_sol` is `numeric(12,9)` (returned as string)
@@ -50,60 +61,81 @@ App open → AsyncStorage session check → valid: `(tabs)/` | invalid: `(auth)/
 Client `.env`: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_DEVNET_RPC_URL` — all set.
 Edge functions get `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` automatically from Supabase.
 
-## Current Session Context
+## Current State (Updated 2026-03-01)
 
 ### Navigation
 `Stack → Drawer → Tabs(6)`. Drawer has devnet/mainnet toggle. Tabs: Home, Friends, Inv, **BATTLE** (center lime), Rank, Shop. Battle tab hides shared Header. Friends/Inv/Rank/Shop are "Coming soon" placeholders.
 
 ### What's Working
-- **Wallet connect/disconnect** via Header.tsx using MWA `transact()` → `wallet.authorize()`. Stores `connectedPublicKey` + `authToken` in `wallet-store` (persisted to AsyncStorage as `cybercard-wallet-session`).
-- **SOL balance** fetches on connect, refreshes every 30s silently. Shows in header pill with Solana SVG logo.
-- **Home screen** renders HeroCard, StatsGrid, RosterSection — all **hardcoded data**, not connected to stores/Supabase.
-- **Battle screen** is UI-only radar matchmaking with animated circles + timer. Hardcoded fighter card.
-- **Drawer** cluster toggle works — disconnects wallet + resets RPC connection on switch.
-- **Supabase client** (`lib/supabase.ts`) is configured with typed `Database` generic + AsyncStorage adapter.
+- **Auth flow fully wired** — Header.tsx → `auth-store.authenticateWithWallet()` → MWA authorize → local JWT → background Supabase auth (challenge → sign nonce → verify → user upserted in DB → session upgraded)
+- **`auth-store.ts`** handles full lifecycle: connect, local JWT, Supabase auth, profile fetch, logout with `deauthorize()`
+- **`lib/decode-address.ts`** — shared utility for base64→base58 address decoding (isolated from MWA imports to prevent crash)
+- **`app/(auth)/connect.tsx`** — standalone connect screen (calls `authenticateWithWallet()`)
+- **Wallet connect/disconnect** via Header.tsx delegating to `auth-store`. Stores `connectedPublicKey` + `authToken` in `wallet-store`.
+- **SOL balance** fetches on connect, refreshes every 30s silently.
+- **Home screen** (`app/(drawer)/(tabs)/index.tsx`) fetches templates on mount, fetches user cards + profile on wallet connect.
+- **Supabase client** (`lib/supabase.ts`) — typed client, `setSupabaseAccessToken()` injects custom JWT for RLS.
 - **Edge functions** all deployed: auth-challenge, auth-verify, mint-pack, marketplace-buy.
-- **DB schema** pushed: 7 tables, 3 migrations, 3 seed card templates, RLS policies, atomic purchase function.
-
-### What's NOT Wired
-- **Auth flow is disconnected** — `auth-store.authenticate()` has full challenge→sign→verify logic but **nothing calls it**. No `(auth)/` route group exists. No route guard. Users can browse everything unauthenticated.
-- **`useWallet.ts` hook** (has connect, disconnect, sendSOL, getBalance with proper error handling) is **not imported by any screen**. Header.tsx has its own inline MWA logic instead.
-- **card-store** (fetchTemplates, fetchMyCards, openPack, listCard, cancelListing) is fully implemented but **no UI calls any action**.
-- **Home screen** doesn't read from `card-store` or `wallet-store` for energy/streak/roster data.
+- **DB schema** pushed: 7 tables, 5 migrations (schema + 3 seed templates + expanded seed data), RLS policies, atomic purchase function.
+- **Expanded seed data** — 15 card templates (6 elements, all rarities), 4 users, 14+ cards, 4 marketplace listings.
+- **Battle screen** is UI-only radar matchmaking (hardcoded).
+- **Drawer** cluster toggle works — disconnects wallet + resets RPC connection on switch.
+- **No route guard** — users land on home screen, connect wallet when ready.
 
 ### Key Implementation Details
-- MWA import pattern: `try/catch require()` at module level in Header.tsx. `useWallet.ts` uses static import (crashes in Expo Go).
-- Phantom returns base64-encoded addresses → `decodeAddress()` converts to base58 PublicKey.
-- `wallet-store.fetchBalance()` shows loading spinner only on first fetch (`solBalance === null`), not on 30s refreshes.
+- MWA import: `try/catch require()` at module level in `auth-store.ts` and `Header.tsx`. `useWallet.ts` has static import (unsafe for Expo Go).
+- `decodeAddress()` lives in `lib/decode-address.ts` (NOT in `useWallet.ts`) to avoid MWA import chain crash.
+- `authenticateWithWallet()` sets local JWT on Supabase client immediately via `setSupabaseAccessToken(localToken)`, then upgrades to real JWT in background.
+- `trySupabaseAuth()` triggers a **second MWA popup** (reauthorize to sign nonce) — expected but could confuse users.
+- `clearAuth()` is async and awaits `setSupabaseAccessToken(null)` before clearing state.
 - `auth-verify` signs JWT with `jose` (HS256, 7d expiry). Claims: `{ sub: userId, wallet_address, role: 'authenticated', aud: 'authenticated' }`.
-- `mint-pack` rolls 3 cards per pack, costs 10 energy, weighted rarity (COMMON 80%, EPIC 16%, LEGENDARY 4%), serial retry for race safety.
+- `mint-pack` rolls 3 cards per pack, costs 10 energy, weighted rarity (COMMON 80%, EPIC 16%, LEGENDARY 4%).
 - `marketplace-buy` uses `execute_marketplace_purchase` Postgres function for atomic listing update + card transfer.
-- Cards are **DB records only** — NFT fields (`mint_address`, `metadata_uri`, `tx_signature`) are all NULL until Phase 2.
-- `price_sol` is `numeric(12,9)` → returned as **string** by supabase-js, typed as `string` in `database.ts`.
-- 3 card assets exist: `assets/cards/f1.png`, `f2.png`, `f3.png` — referenced in DB seed but not rendered in any component.
+- Cards are **DB records only** — NFT fields are NULL until Phase 2.
+- `price_sol` is `numeric(12,9)` → returned as **string** by supabase-js.
+- 3 card image assets: `assets/cards/f1.png`, `f2.png`, `f3.png`.
 
 ### Stores Snapshot
 - **wallet-store** (persisted): `connectedPublicKey`, `authToken`, `cluster`, `solBalance`, `balanceLoading`
-- **auth-store** (persisted): `userId`, `sessionToken`, `authLoading` — all null (never populated)
-- **card-store** (not persisted): `templates[]`, `myCards[]`, `activeListings[]`, `mintingPack` — all empty (never fetched)
+- **auth-store** (persisted): `userId`, `sessionToken`, `userProfile`, `authLoading`, `_hasHydrated`
+- **card-store** (not persisted): `templates[]`, `myCards[]`, `activeListings[]`, `mintingPack`
+
+### Migrations
+1. `20260228000000_initial_schema.sql` — 7 tables, 5 ENUMs, RLS, triggers, indexes
+2. `20260228000001_seed_card_templates.sql` — 3 starter templates (Little Wyrm, Neptune's Wrath, Valor Knight)
+3. `20260228000002_marketplace_rpc_and_fixes.sql` — atomic purchase function, nullable card_used for FORFEIT
+4. `20260301000000_seed_user_and_cards.sql` — CyberPlayer user + 3 starter cards
+5. `20260301000001_expanded_seed_data.sql` — 12 more templates, 3 users, 11 cards, 4 listings
+
+### Seed Data Summary
+**Card Templates (15 total):**
+- FIRE: Little Wyrm (COMMON), Ember Fox (RARE), Inferno Titan (LEGENDARY)
+- WATER: Frost Sprite (COMMON), Tidal Serpent (EPIC), Neptune's Wrath (LEGENDARY)
+- EARTH: Root Weaver (COMMON), Stone Golem (RARE), Valor Knight (EPIC)
+- AIR: Zephyr Wisp (COMMON), Storm Falcon (EPIC)
+- LIGHTNING: Spark Hound (RARE), Voltaic Drake (LEGENDARY)
+- SHADOW: Shade Stalker (EPIC), Void Reaper (LEGENDARY)
+
+**Users (4):** CyberPlayer (devnet wallet), ShadowTrader, CardMaster99, NovaCollector
 
 ### Known Issues
-1. Two wallet implementations (Header inline + useWallet hook) — should consolidate
-2. Header disconnect doesn't call `wallet.deauthorize()` (Phantom session lingers)
-3. JWT has no refresh logic — fails silently after 7 days
-4. `HeroCard.tsx:100` uses hardcoded `#ccc` color instead of theme token
-5. `app.json` still has default `"name": "project"`, `"package": "com.anonymous.project"`
-6. `npx expo prebuild` not yet run — required for on-device testing
+1. Second MWA popup from `trySupabaseAuth()` (UX friction — user signs nonce in separate transact session)
+2. JWT has no refresh logic — fails silently after 7 days
+3. Some hardcoded colors in Header.tsx and connect.tsx (not from theme tokens)
+4. `wallet-store` has no hydration flag (brief UI flicker on app resume)
+5. Cluster switch doesn't call `wallet.deauthorize()`
+6. `app.json` still has default `"name": "project"`, `"package": "com.anonymous.project"`
+7. `npx expo prebuild` not yet run — required for on-device testing
 
 ### Detailed Docs
 See `current.md` for full developer documentation (DB schema, edge function specs, RLS table, design tokens, etc.)
 
 ## Not Yet Built
-- Auth screen `(auth)/connect.tsx` + route guard (unified MWA + Supabase auth in one `transact()`)
-- Wire Home screen to stores (energy, streak, roster from Supabase)
+- Wire Home screen fully to stores (energy, streak, roster from Supabase — partially done)
 - Inventory / Shop / Card detail screens
 - NFT minting + IPFS metadata (Phase 2 — Metaplex UMI)
 - Battle gameplay + battle edge functions (create, join, move, resolve)
 - Friends / Rankings systems
 - JWT refresh logic
 - `eas.json` config / `npx expo prebuild` not yet run
+- Push latest migrations to Supabase (`supabase db push`)
