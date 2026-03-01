@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx expo prebuild --platform android --clean)",
+      "Bash(npx expo run:android --port 8082)"
+    ]
+  }
+}
