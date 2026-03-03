@@ -28,6 +28,7 @@ interface CardState {
   // --- deck actions ---
   setDeck: (ids: string[]) => void;
   toggleDeckCard: (cardId: string) => void;
+  setDeckSlot: (slotIndex: number, cardId: string) => void;
 
   // --- actions ---
   fetchTemplates: () => Promise<void>;
@@ -59,6 +60,18 @@ export const useCardStore = create<CardState>()(
     } else if (deck.length < 3) {
       set({ deck: [...deck, cardId] });
     }
+  },
+
+  setDeckSlot: (slotIndex: number, cardId: string) => {
+    const { deck } = get();
+    // Remove card if already in deck (prevent duplicates)
+    const filtered = deck.filter((id) => id !== cardId);
+    // Pad to 3 slots for positional access
+    const padded = [filtered[0] ?? '', filtered[1] ?? '', filtered[2] ?? ''];
+    // Place card at target slot
+    padded[slotIndex] = cardId;
+    // Strip empty strings
+    set({ deck: padded.filter(Boolean) });
   },
 
   fetchTemplates: async () => {

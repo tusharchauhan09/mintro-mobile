@@ -22,6 +22,9 @@ app/(drawer)/(tabs)/    Main app tabs after optional auth
 supabase/functions/     Edge Functions (Deno) — auth-challenge, auth-verify, mint-pack, marketplace-buy
 supabase/migrations/    SQL + RLS + seed data (5 migrations)
 constants/theme.ts      Design tokens — ALL colors/spacing/fonts here
+constants/card-utils.ts Shared card utilities (getGradientForRarity, getElementIcon)
+constants/preview-cards.ts  Mock card data (15 cards) for inventory preview mode
+components/inventory/   CardDetailModal, DragOverlay — inventory UI components
 stores/                 Zustand v5 stores (wallet-store, card-store, auth-store)
 lib/solana.ts           Singleton Connection, APP_IDENTITY
 lib/supabase.ts         Typed Supabase client + AsyncStorage session adapter
@@ -61,10 +64,10 @@ Zustand v5 (no TanStack Query) · MWA (`@solana-mobile/mobile-wallet-adapter-pro
 Client `.env`: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_DEVNET_RPC_URL` — all set.
 Edge functions get `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` automatically from Supabase.
 
-## Current State (Updated 2026-03-01)
+## Current State (Updated 2026-03-03)
 
 ### Navigation
-`Stack → Drawer → Tabs(6)`. Drawer has devnet/mainnet toggle. Tabs: Home, Friends, Inv, **BATTLE** (center lime), Rank, Shop. Battle tab hides shared Header. Friends/Inv/Rank/Shop are "Coming soon" placeholders.
+`Stack → Drawer → Tabs(6)`. Drawer has devnet/mainnet toggle. Tabs: Home, Friends, Inv, **BATTLE** (center lime), Rank, Shop. Battle tab hides shared Header. Friends/Rank/Shop are "Coming soon" placeholders.
 
 ### What's Working
 - **Auth flow fully wired** — Header.tsx → `auth-store.authenticateWithWallet()` → MWA authorize → local JWT → background Supabase auth (challenge → sign nonce → verify → user upserted in DB → session upgraded)
@@ -81,6 +84,10 @@ Edge functions get `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SE
 - **Battle screen** is UI-only radar matchmaking (hardcoded).
 - **Drawer** cluster toggle works — disconnects wallet + resets RPC connection on switch.
 - **No route guard** — users land on home screen, connect wallet when ready.
+- **Inventory screen fully built** — 2-column card grid, 3-slot battle deck builder, drag-and-drop + card detail modal.
+- **Drag-and-drop deck building** — long press (300ms) a card → ghost overlay follows finger → drop on deck slot to place. Uses `react-native-gesture-handler` `Gesture.Pan().activateAfterLongPress()` + `react-native-reanimated` shared values.
+- **Card detail modal** — tap any card → full-screen modal with rarity gradient header, element/rarity badges, description, stat bars (ATK/DEF/HP), level/XP, serial number, "Add/Remove from Deck" button.
+- **Preview mode** — inventory shows all 15 card templates as mock data when no wallet connected (wallet `8G714eBLWo3evwqH9ma8P6244yP2vHfHiPvjHmcsc5ng`). Shows lime "Preview Mode" banner.
 
 ### Key Implementation Details
 - MWA import: `try/catch require()` at module level in `auth-store.ts` and `Header.tsx`. `useWallet.ts` has static import (unsafe for Expo Go).
@@ -94,11 +101,14 @@ Edge functions get `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SE
 - Cards are **DB records only** — NFT fields are NULL until Phase 2.
 - `price_sol` is `numeric(12,9)` → returned as **string** by supabase-js.
 - 3 card image assets: `assets/cards/f1.png`, `f2.png`, `f3.png`.
+- **Inventory drag-and-drop**: `Gesture.Race(pan, tap)` in each grid card — tap opens modal, long press (300ms) activates pan drag. Ghost overlay uses Reanimated shared values (`dragX`, `dragY`, `dragScale`, `dragOpacity`). Drop detection via `measureInWindow` on deck slot refs. `scrollEnabled={!isDragging}` prevents FlatList scroll during drag.
+- **`setDeckSlot(slotIndex, cardId)`** handles positional placement: removes duplicates, pads to 3 slots, places at target index, strips empties.
+- **`getGradientForRarity()`** extracted to `constants/card-utils.ts` — used by inventory, CardDetailModal, DragOverlay. Rarity colors: LEGENDARY gold, EPIC purple, RARE blue, COMMON gray gradient.
 
 ### Stores Snapshot
 - **wallet-store** (persisted): `connectedPublicKey`, `authToken`, `cluster`, `solBalance`, `balanceLoading`
 - **auth-store** (persisted): `userId`, `sessionToken`, `userProfile`, `authLoading`, `_hasHydrated`
-- **card-store** (not persisted): `templates[]`, `myCards[]`, `activeListings[]`, `mintingPack`
+- **card-store** (deck persisted): `templates[]`, `myCards[]`, `activeListings[]`, `deck[]` (up to 3 card IDs), `mintingPack`. Actions: `toggleDeckCard`, `setDeckSlot(slotIndex, cardId)`
 
 ### Migrations
 1. `20260228000000_initial_schema.sql` — 7 tables, 5 ENUMs, RLS, triggers, indexes
@@ -132,7 +142,7 @@ See `current.md` for full developer documentation (DB schema, edge function spec
 
 ## Not Yet Built
 - Wire Home screen fully to stores (energy, streak, roster from Supabase — partially done)
-- Inventory / Shop / Card detail screens
+- Shop screen
 - NFT minting + IPFS metadata (Phase 2 — Metaplex UMI)
 - Battle gameplay + battle edge functions (create, join, move, resolve)
 - Friends / Rankings systems
