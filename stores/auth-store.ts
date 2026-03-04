@@ -190,6 +190,9 @@ export const useAuthStore = create<AuthState>()(
         } finally {
           await setSupabaseAccessToken(null);
           useWalletStore.getState().clearSession();
+          // Clear card data so stale cards don't show for the next wallet
+          const { useCardStore } = require('@/stores/card-store');
+          useCardStore.getState().clearCards();
           set({ userId: null, sessionToken: null, userProfile: null });
         }
       },

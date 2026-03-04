@@ -22,6 +22,14 @@ export const colors = {
 
   gradientCardA: ['#333333', '#111111'] as const,
   gradientCardB: ['#2a2a2a', '#1a1a1a'] as const,
+
+  // Battle
+  battleHpGreen: '#4CAF50',
+  battleHpYellow: '#FFC107',
+  battleHpRed: '#F44336',
+  battleAdvantage: '#4CAF50',
+  battleDisadvantage: '#F44336',
+  battleNeutral: '#999999',
 } as const;
 
 export const spacing = {

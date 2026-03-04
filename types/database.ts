@@ -7,7 +7,8 @@ export type Rarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
 export type Element = 'FIRE' | 'WATER' | 'EARTH' | 'AIR' | 'LIGHTNING' | 'SHADOW';
 export type ListingStatus = 'ACTIVE' | 'SOLD' | 'CANCELLED';
 export type BattleStatus = 'OPEN' | 'ACTIVE' | 'COMPLETED';
-export type MoveType = 'ATTACK' | 'SWITCH' | 'FORFEIT';
+export type MoveType = 'ATTACK' | 'SPECIAL' | 'SWITCH' | 'FORFEIT';
+export type MatchmakingStatus = 'WAITING' | 'MATCHED' | 'CANCELLED';
 
 export interface Database {
   public: {
@@ -268,6 +269,11 @@ export interface Database {
           winner_id: string | null;
           status: BattleStatus;
           xp_reward: number;
+          current_turn_player_id: string | null;
+          turn_number: number;
+          turn_deadline: string | null;
+          challenger_cooldowns: Record<string, number>;
+          opponent_cooldowns: Record<string, number>;
           created_at: string;
           completed_at: string | null;
         };
@@ -284,6 +290,11 @@ export interface Database {
           winner_id?: string | null;
           status?: BattleStatus;
           xp_reward?: number;
+          current_turn_player_id?: string | null;
+          turn_number?: number;
+          turn_deadline?: string | null;
+          challenger_cooldowns?: Record<string, number>;
+          opponent_cooldowns?: Record<string, number>;
           created_at?: string;
           completed_at?: string | null;
         };
@@ -300,6 +311,11 @@ export interface Database {
           winner_id?: string | null;
           status?: BattleStatus;
           xp_reward?: number;
+          current_turn_player_id?: string | null;
+          turn_number?: number;
+          turn_deadline?: string | null;
+          challenger_cooldowns?: Record<string, number>;
+          opponent_cooldowns?: Record<string, number>;
           created_at?: string;
           completed_at?: string | null;
         };
@@ -395,6 +411,53 @@ export interface Database {
       };
     };
 
+      matchmaking_queue: {
+        Row: {
+          id: string;
+          user_id: string;
+          deck: string[];
+          room_code: string | null;
+          status: MatchmakingStatus;
+          matched_battle_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          deck: string[];
+          room_code?: string | null;
+          status?: MatchmakingStatus;
+          matched_battle_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          deck?: string[];
+          room_code?: string | null;
+          status?: MatchmakingStatus;
+          matched_battle_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'matchmaking_queue_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'matchmaking_queue_matched_battle_id_fkey';
+            columns: ['matched_battle_id'];
+            isOneToOne: false;
+            referencedRelation: 'battles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+    };
+
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: {
@@ -418,6 +481,7 @@ export type Card = Database['public']['Tables']['cards']['Row'];
 export type Listing = Database['public']['Tables']['listings']['Row'];
 export type Battle = Database['public']['Tables']['battles']['Row'];
 export type BattleMove = Database['public']['Tables']['battle_moves']['Row'];
+export type MatchmakingQueue = Database['public']['Tables']['matchmaking_queue']['Row'];
 
 /** Card joined with its template — common query result shape. */
 export type CardWithTemplate = Card & {

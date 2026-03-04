@@ -1,10 +1,7 @@
 import CardDetailModal from "@/components/inventory/CardDetailModal";
 import DragOverlay from "@/components/inventory/DragOverlay";
 import { getCardImage } from "@/constants/card-images";
-import {
-  PREVIEW_CARDS,
-  PREVIEW_WALLET_ADDRESS,
-} from "@/constants/preview-cards";
+import { PREVIEW_CARDS } from "@/constants/preview-cards";
 import { colors, fonts, radii, spacing } from "@/constants/theme";
 import { useCardStore } from "@/stores/card-store";
 import { useWalletStore } from "@/stores/wallet-store";
@@ -151,13 +148,12 @@ export default function InventoryScreen() {
   const setDeckSlot = useCardStore((s) => s.setDeckSlot);
   const fetchMyCards = useCardStore((s) => s.fetchMyCards);
 
-  // Preview mode
-  const isPreview =
-    !connectedPublicKey || connectedPublicKey === PREVIEW_WALLET_ADDRESS;
+  // Preview mode — only when no wallet connected
+  const isPreview = !connectedPublicKey;
   const myCards = isPreview ? PREVIEW_CARDS : storeCards;
 
   useEffect(() => {
-    if (connectedPublicKey && connectedPublicKey !== PREVIEW_WALLET_ADDRESS) {
+    if (connectedPublicKey) {
       fetchMyCards(connectedPublicKey);
     }
   }, [connectedPublicKey, fetchMyCards]);

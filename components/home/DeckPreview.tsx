@@ -1,8 +1,5 @@
 import { getCardImage } from "@/constants/card-images";
-import {
-  PREVIEW_CARDS,
-  PREVIEW_WALLET_ADDRESS,
-} from "@/constants/preview-cards";
+import { PREVIEW_CARDS } from "@/constants/preview-cards";
 import { colors, fonts, radii, spacing } from "@/constants/theme";
 import { useCardStore } from "@/stores/card-store";
 import { useWalletStore } from "@/stores/wallet-store";
@@ -50,8 +47,7 @@ export default function DeckPreview() {
   const storeCards = useCardStore((s) => s.myCards);
 
   // Use preview cards when no wallet connected (same logic as inventory)
-  const isPreview =
-    !connectedPublicKey || connectedPublicKey === PREVIEW_WALLET_ADDRESS;
+  const isPreview = !connectedPublicKey;
   const myCards =
     isPreview && storeCards.length === 0 ? PREVIEW_CARDS : storeCards;
 

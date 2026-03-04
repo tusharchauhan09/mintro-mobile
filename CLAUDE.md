@@ -20,10 +20,11 @@ app/                    Expo Router v6. Groups: (auth)/, (drawer)/(tabs)/
 app/(auth)/             Auth screens — connect.tsx (MWA wallet connect)
 app/(drawer)/(tabs)/    Main app tabs after optional auth
 supabase/functions/     Edge Functions (Deno) — auth-challenge, auth-verify, mint-pack, marketplace-buy
-supabase/migrations/    SQL + RLS + seed data (5 migrations)
+supabase/migrations/    SQL + RLS + seed data (7 migrations)
 constants/theme.ts      Design tokens — ALL colors/spacing/fonts here
 constants/card-utils.ts Shared card utilities (getGradientForRarity, getElementIcon)
-constants/preview-cards.ts  Mock card data (15 cards) for inventory preview mode
+constants/card-images.ts    getCardImage() — resolves Cloudinary URLs to RN image sources (no local assets)
+constants/preview-cards.ts  Mock card data (6 cards) for inventory preview mode (no wallet connected)
 components/inventory/   CardDetailModal, DragOverlay — inventory UI components
 stores/                 Zustand v5 stores (wallet-store, card-store, auth-store)
 lib/solana.ts           Singleton Connection, APP_IDENTITY
@@ -87,7 +88,7 @@ Edge functions get `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SE
 - **Inventory screen fully built** — 2-column card grid, 3-slot battle deck builder, drag-and-drop + card detail modal.
 - **Drag-and-drop deck building** — long press (300ms) a card → ghost overlay follows finger → drop on deck slot to place. Uses `react-native-gesture-handler` `Gesture.Pan().activateAfterLongPress()` + `react-native-reanimated` shared values.
 - **Card detail modal** — tap any card → full-screen modal with rarity gradient header, element/rarity badges, description, stat bars (ATK/DEF/HP), level/XP, serial number, "Add/Remove from Deck" button.
-- **Preview mode** — inventory shows all 15 card templates as mock data when no wallet connected (wallet `8G714eBLWo3evwqH9ma8P6244yP2vHfHiPvjHmcsc5ng`). Shows lime "Preview Mode" banner.
+- **Preview mode** — inventory shows 6 mock cards when no wallet connected. Shows lime "Preview Mode" banner. Wallet `8G714eBLWo3evwqH9ma8P6244yP2vHfHiPvjHmcsc5ng` is a real DB user (not preview).
 
 ### Key Implementation Details
 - MWA import: `try/catch require()` at module level in `auth-store.ts` and `Header.tsx`. `useWallet.ts` has static import (unsafe for Expo Go).
@@ -100,7 +101,7 @@ Edge functions get `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SE
 - `marketplace-buy` uses `execute_marketplace_purchase` Postgres function for atomic listing update + card transfer.
 - Cards are **DB records only** — NFT fields are NULL until Phase 2.
 - `price_sol` is `numeric(12,9)` → returned as **string** by supabase-js.
-- 3 card image assets: `assets/cards/f1.png`, `f2.png`, `f3.png`.
+- **No local card images** — all card images are Cloudinary URLs stored in `card_templates.image_url`. `getCardImage()` in `constants/card-images.ts` resolves URLs to `{ uri }` sources.
 - **Inventory drag-and-drop**: `Gesture.Race(pan, tap)` in each grid card — tap opens modal, long press (300ms) activates pan drag. Ghost overlay uses Reanimated shared values (`dragX`, `dragY`, `dragScale`, `dragOpacity`). Drop detection via `measureInWindow` on deck slot refs. `scrollEnabled={!isDragging}` prevents FlatList scroll during drag.
 - **`setDeckSlot(slotIndex, cardId)`** handles positional placement: removes duplicates, pads to 3 slots, places at target index, strips empties.
 - **`getGradientForRarity()`** extracted to `constants/card-utils.ts` — used by inventory, CardDetailModal, DragOverlay. Rarity colors: LEGENDARY gold, EPIC purple, RARE blue, COMMON gray gradient.
@@ -112,21 +113,25 @@ Edge functions get `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SE
 
 ### Migrations
 1. `20260228000000_initial_schema.sql` — 7 tables, 5 ENUMs, RLS, triggers, indexes
-2. `20260228000001_seed_card_templates.sql` — 3 starter templates (Little Wyrm, Neptune's Wrath, Valor Knight)
+2. `20260228000001_seed_card_templates.sql` — 3 starter templates (obsoleted by migration 6+7)
 3. `20260228000002_marketplace_rpc_and_fixes.sql` — atomic purchase function, nullable card_used for FORFEIT
-4. `20260301000000_seed_user_and_cards.sql` — CyberPlayer user + 3 starter cards
-5. `20260301000001_expanded_seed_data.sql` — 12 more templates, 3 users, 11 cards, 4 listings
+4. `20260301000000_seed_user_and_cards.sql` — old seed data (obsoleted by migration 7)
+5. `20260301000001_expanded_seed_data.sql` — old expanded seed (obsoleted by migration 7)
+6. `20260303000000_replace_card_templates.sql` — replaced templates with 6 Cloudinary cards (obsoleted by migration 7)
+7. `20260304000000_single_user_all_cards.sql` — **CURRENT**: wipes all data, seeds 1 user + 6 templates + 6 cards
 
 ### Seed Data Summary
-**Card Templates (15 total):**
-- FIRE: Little Wyrm (COMMON), Ember Fox (RARE), Inferno Titan (LEGENDARY)
-- WATER: Frost Sprite (COMMON), Tidal Serpent (EPIC), Neptune's Wrath (LEGENDARY)
-- EARTH: Root Weaver (COMMON), Stone Golem (RARE), Valor Knight (EPIC)
-- AIR: Zephyr Wisp (COMMON), Storm Falcon (EPIC)
-- LIGHTNING: Spark Hound (RARE), Voltaic Drake (LEGENDARY)
-- SHADOW: Shade Stalker (EPIC), Void Reaper (LEGENDARY)
+**Card Templates (6 total):**
+- FIRE: Little Wyrm (COMMON, ATK 5 / DEF 3)
+- SHADOW: The Rogue (RARE, ATK 9 / DEF 6)
+- EARTH: Valor Knight (EPIC, ATK 12 / DEF 10)
+- WATER: The Ice Mage (EPIC, ATK 10 / DEF 4)
+- WATER: Neptune's Wrath (LEGENDARY, ATK 15 / DEF 8)
+- EARTH: The Paladin (LEGENDARY, ATK 13 / DEF 12)
 
-**Users (4):** CyberPlayer (devnet wallet), ShadowTrader, CardMaster99, NovaCollector
+All images are Cloudinary URLs (no local assets).
+
+**Users (1):** TestPlayer (wallet `8G714eBLWo3evwqH9ma8P6244yP2vHfHiPvjHmcsc5ng`) — owns all 6 cards
 
 ### Known Issues
 1. Second MWA popup from `trySupabaseAuth()` (UX friction — user signs nonce in separate transact session)

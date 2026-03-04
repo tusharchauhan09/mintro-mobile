@@ -10,6 +10,12 @@ function getSupabase() {
   return require('@/lib/supabase').supabase as import('@supabase/supabase-js').SupabaseClient;
 }
 
+/** Get current connected wallet address (or null). */
+function getActiveWallet(): string | null {
+  const { useWalletStore } = require('@/stores/wallet-store');
+  return useWalletStore.getState().connectedPublicKey;
+}
+
 type ListingWithCard = Listing & { cards: CardWithTemplate };
 
 interface CardState {
@@ -17,7 +23,9 @@ interface CardState {
   templates: CardTemplate[];
   myCards: CardWithTemplate[];
   activeListings: ListingWithCard[];
-  deck: string[]; // up to 3 card IDs chosen for battle
+  deck: string[]; // up to 3 card IDs chosen for battle (derived from active wallet)
+  /** Per-wallet deck storage keyed by wallet address. */
+  _decks: Record<string, string[]>;
 
   // --- loading states ---
   templatesLoading: boolean;
@@ -29,6 +37,9 @@ interface CardState {
   setDeck: (ids: string[]) => void;
   toggleDeckCard: (cardId: string) => void;
   setDeckSlot: (slotIndex: number, cardId: string) => void;
+
+  /** Clear user-specific data on logout/disconnect. Deck is preserved in _decks. */
+  clearCards: () => void;
 
   // --- actions ---
   fetchTemplates: () => Promise<void>;
@@ -46,24 +57,39 @@ export const useCardStore = create<CardState>()(
   myCards: [],
   activeListings: [],
   deck: [],
+  _decks: {},
   templatesLoading: false,
   cardsLoading: false,
   listingsLoading: false,
   mintingPack: false,
 
-  setDeck: (ids: string[]) => set({ deck: ids.slice(0, 3) }),
+  setDeck: (ids: string[]) => {
+    const newDeck = ids.slice(0, 3);
+    const wallet = getActiveWallet();
+    const _decks = { ...get()._decks };
+    if (wallet) _decks[wallet] = newDeck;
+    set({ deck: newDeck, _decks });
+  },
 
   toggleDeckCard: (cardId: string) => {
-    const { deck } = get();
+    const { deck, _decks } = get();
+    const wallet = getActiveWallet();
+    let newDeck: string[];
     if (deck.includes(cardId)) {
-      set({ deck: deck.filter((id) => id !== cardId) });
+      newDeck = deck.filter((id) => id !== cardId);
     } else if (deck.length < 3) {
-      set({ deck: [...deck, cardId] });
+      newDeck = [...deck, cardId];
+    } else {
+      return;
     }
+    const updatedDecks = { ..._decks };
+    if (wallet) updatedDecks[wallet] = newDeck;
+    set({ deck: newDeck, _decks: updatedDecks });
   },
 
   setDeckSlot: (slotIndex: number, cardId: string) => {
-    const { deck } = get();
+    const { deck, _decks } = get();
+    const wallet = getActiveWallet();
     // Remove card if already in deck (prevent duplicates)
     const filtered = deck.filter((id) => id !== cardId);
     // Pad to 3 slots for positional access
@@ -71,7 +97,14 @@ export const useCardStore = create<CardState>()(
     // Place card at target slot
     padded[slotIndex] = cardId;
     // Strip empty strings
-    set({ deck: padded.filter(Boolean) });
+    const newDeck = padded.filter(Boolean);
+    const updatedDecks = { ..._decks };
+    if (wallet) updatedDecks[wallet] = newDeck;
+    set({ deck: newDeck, _decks: updatedDecks });
+  },
+
+  clearCards: () => {
+    set({ myCards: [], activeListings: [], deck: [] });
   },
 
   fetchTemplates: async () => {
@@ -94,6 +127,12 @@ export const useCardStore = create<CardState>()(
   fetchMyCards: async (walletAddress: string) => {
     set({ cardsLoading: true });
     try {
+      // Restore persisted deck for this wallet
+      const savedDeck = get()._decks[walletAddress] ?? [];
+      if (savedDeck.length > 0) {
+        set({ deck: savedDeck });
+      }
+
       // Resolve user id from wallet address
       const { data: user } = await getSupabase()
         .from('users')
@@ -218,6 +257,6 @@ export const useCardStore = create<CardState>()(
   {
     name: 'card-store',
     storage: createJSONStorage(() => AsyncStorage),
-    partialize: (state) => ({ deck: state.deck }),
+    partialize: (state) => ({ _decks: state._decks }),
   },
 ));

@@ -54,6 +54,9 @@ export const useWalletStore = create<WalletState>()(
           solBalance: null,
           balanceLoading: false,
         });
+        // Clear card data so stale cards don't show for the next wallet
+        const { useCardStore } = require('@/stores/card-store');
+        useCardStore.getState().clearCards();
         // Reset connection so it picks up the new RPC URL
         const { resetConnection } = require('@/lib/solana');
         resetConnection();
